@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InventarioFerr · Sistema de Inventario</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       SIDEBAR DE NAVEGACIÓN
+  ═══════════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🔩</div>
+      <div class="logo-text">
+        <span class="logo-title">InventarioFerr</span>
+        <span class="logo-sub">Ferretería Local</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-link active" data-view="dashboard" onclick="cambiarVista('dashboard', this)">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="#" class="nav-link" data-view="inventario" onclick="cambiarVista('inventario', this)">
+        <span class="nav-icon">📦</span>
+        <span class="nav-label">Inventario</span>
+      </a>
+      <a href="#" class="nav-link" data-view="stock-bajo" onclick="cambiarVista('stock-bajo', this)">
+        <span class="nav-icon">⚠️</span>
+        <span class="nav-label">Stock Bajo</span>
+        <span class="nav-badge" id="badge-stock-bajo">0</span>
+      </a>
+      <a href="#" class="nav-link" data-view="movimientos" onclick="cambiarVista('movimientos', this)">
+        <span class="nav-icon">🔄</span>
+        <span class="nav-label">Movimientos</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-nuevo-producto" onclick="abrirModalProducto()">
+        <span>＋</span> Nuevo Producto
+      </button>
+    </div>
+  </aside>
+
+  <!-- Overlay para móvil -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- ═══════════════════════════════════════════
+       CONTENIDO PRINCIPAL
+  ═══════════════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <button class="btn-menu-mobile" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-search">
+        <span class="search-icon">🔍</span>
+        <input
+          type="search"
+          id="buscador-global"
+          placeholder="Buscar por código o nombre del producto..."
+          autocomplete="off"
+          oninput="buscarProductos(this.value)"
+        />
+        <kbd class="search-hint">Esc para limpiar</kbd>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-exportar" onclick="exportarCSV()">
+          ⬇ Exportar Excel
+        </button>
+      </div>
+    </header>
+
+    <!-- ─────────────────────────────────
+         VISTA: DASHBOARD
+    ───────────────────────────────── -->
+    <section class="view active" id="view-dashboard">
+      <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Resumen general del inventario</p>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-icon">📦</div>
+          <div class="kpi-data">
+            <span class="kpi-value" id="kpi-total-productos">0</span>
+            <span class="kpi-label">Productos Registrados</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-green">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-data">
+            <span class="kpi-value" id="kpi-valor-inventario">$0</span>
+            <span class="kpi-label">Valor del Inventario</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-amber">
+          <div class="kpi-icon">🔢</div>
+          <div class="kpi-data">
+            <span class="kpi-value" id="kpi-total-unidades">0</span>
+            <span class="kpi-label">Unidades en Stock</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-red">
+          <div class="kpi-icon">⚠️</div>
+          <div class="kpi-data">
+            <span class="kpi-value" id="kpi-stock-bajo">0</span>
+            <span class="kpi-label">Alertas Stock Bajo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERTAS DE STOCK BAJO -->
+      <div class="section-card" id="seccion-alertas">
+        <div class="card-header">
+          <h2 class="card-title">⚠️ Productos con Stock Bajo</h2>
+          <span class="card-sub">Menos de 5 unidades disponibles</span>
+        </div>
+        <div class="alerta-lista" id="lista-alertas">
+          <!-- Generado por JS -->
+        </div>
+      </div>
+
+      <!-- RESUMEN POR CATEGORÍA -->
+      <div class="section-card">
+        <div class="card-header">
+          <h2 class="card-title">📂 Resumen por Categoría</h2>
+        </div>
+        <div class="categoria-grid" id="grid-categorias">
+          <!-- Generado por JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────
+         VISTA: INVENTARIO COMPLETO
+    ───────────────────────────────── -->
+    <section class="view" id="view-inventario">
+      <div class="page-header">
+        <h1 class="page-title">Inventario</h1>
+        <div class="header-actions">
+          <select class="filtro-select" id="filtro-categoria" onchange="aplicarFiltros()">
+            <option value="">Todas las categorías</option>
+          </select>
+          <button class="btn-primary" onclick="abrirModalProducto()">
+            ＋ Nuevo Producto
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de productos -->
+      <div class="section-card tabla-wrapper">
+        <table class="tabla-inventario" id="tabla-productos">
+          <thead>
+            <tr>
+              <th onclick="ordenarPor('codigo')">Código <span class="sort-icon">⇅</span></th>
+              <th onclick="ordenarPor('nombre')">Nombre del Producto <span class="sort-icon">⇅</span></th>
+              <th>Categoría</th>
+              <th onclick="ordenarPor('precio_venta')">Precio Venta <span class="sort-icon">⇅</span></th>
+              <th onclick="ordenarPor('cantidad')">Stock <span class="sort-icon">⇅</span></th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-tabla">
+            <!-- Generado por JS -->
+          </tbody>
+        </table>
+        <div class="tabla-pie">
+          <span id="contador-resultados">0 productos</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────
+         VISTA: STOCK BAJO
+    ───────────────────────────────── -->
+    <section class="view" id="view-stock-bajo">
+      <div class="page-header">
+        <h1 class="page-title">⚠️ Productos con Stock Bajo</h1>
+        <p class="page-sub">Artículos que necesitan reabastecimiento urgente</p>
+      </div>
+      <div class="section-card tabla-wrapper">
+        <table class="tabla-inventario" id="tabla-stock-bajo">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th>Stock Actual</th>
+              <th>Stock Mínimo</th>
+              <th>Faltante</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-stock-bajo">
+            <!-- Generado por JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────
+         VISTA: MOVIMIENTOS
+    ───────────────────────────────── -->
+    <section class="view" id="view-movimientos">
+      <div class="page-header">
+        <h1 class="page-title">Movimientos de Inventario</h1>
+        <p class="page-sub">Historial de entradas y salidas</p>
+      </div>
+      <div class="section-card tabla-wrapper">
+        <table class="tabla-inventario" id="tabla-movimientos">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Producto</th>
+              <th>Tipo</th>
+              <th>Cantidad</th>
+              <th>Stock Antes</th>
+              <th>Stock Después</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-movimientos">
+            <!-- Generado por JS -->
+          </tbody>
+        </table>
+        <div class="tabla-pie">
+          <span id="contador-movimientos">0 movimientos</span>
+        </div>
+      </div>
+    </section>
+
+  </main><!-- /main-content -->
+
+
+  <!-- ═══════════════════════════════════════════
+       MODAL: CREAR / EDITAR PRODUCTO
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-producto" onclick="cerrarModalSiOverlay(event)">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-titulo">Nuevo Producto</h2>
+        <button class="btn-cerrar-modal" onclick="cerrarModalProducto()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="campo-id" />
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="campo-codigo">Código del Producto *</label>
+            <input type="text" class="form-input font-mono" id="campo-codigo"
+                   placeholder="Ej: PLO-001" maxlength="50" required />
+            <span class="form-hint">Clave única para identificar el artículo</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="campo-nombre">Nombre del Producto *</label>
+            <input type="text" class="form-input" id="campo-nombre"
+                   placeholder='Ej: Codo de cobre 1/2"' maxlength="200" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="campo-categoria">Categoría *</label>
+            <select class="form-input" id="campo-categoria" required>
+              <option value="">Seleccionar categoría...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="campo-unidad">Unidad de Medida</label>
+            <select class="form-input" id="campo-unidad">
+              <option value="pieza">Pieza</option>
+              <option value="metro">Metro</option>
+              <option value="litro">Litro</option>
+              <option value="kg">Kilogramo</option>
+              <option value="rollo">Rollo</option>
+              <option value="bolsa">Bolsa</option>
+              <option value="caja">Caja</option>
+              <option value="bulto">Bulto</option>
+              <option value="cubeta">Cubeta</option>
+              <option value="par">Par</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="campo-precio-compra">Precio de Compra ($) *</label>
+            <input type="number" class="form-input" id="campo-precio-compra"
+                   placeholder="0.00" min="0" step="0.01" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="campo-precio-venta">Precio de Venta ($) *</label>
+            <input type="number" class="form-input" id="campo-precio-venta"
+                   placeholder="0.00" min="0" step="0.01" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="campo-cantidad">Cantidad en Stock *</label>
+            <input type="number" class="form-input" id="campo-cantidad"
+                   placeholder="0" min="0" step="1" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="campo-stock-minimo">
+              Stock Mínimo
+              <span class="form-hint-inline">(activa alerta)</span>
+            </label>
+            <input type="number" class="form-input" id="campo-stock-minimo"
+                   placeholder="5" min="0" step="1" value="5" />
+          </div>
+
+          <div class="form-group form-group-full">
+            <label class="form-label" for="campo-descripcion">Descripción (opcional)</label>
+            <textarea class="form-input form-textarea" id="campo-descripcion"
+                      placeholder="Detalles adicionales del producto..." rows="2"></textarea>
+          </div>
+        </div>
+
+        <!-- Margen calculado en tiempo real -->
+        <div class="margen-preview" id="margen-preview">
+          <span class="margen-label">Margen de ganancia:</span>
+          <span class="margen-valor" id="margen-valor">—</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="cerrarModalProducto()">Cancelar</button>
+        <button class="btn-primary" onclick="guardarProducto()">
+          <span id="btn-guardar-texto">Guardar Producto</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       MODAL: AJUSTE RÁPIDO DE STOCK
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-ajuste" onclick="cerrarModalSiOverlay(event)">
+    <div class="modal-box modal-box-sm">
+      <div class="modal-header">
+        <h2 class="modal-title">Ajustar Stock</h2>
+        <button class="btn-cerrar-modal" onclick="cerrarModalAjuste()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="ajuste-producto-nombre" id="ajuste-nombre-producto">Producto</p>
+        <div class="stock-actual-display">
+          <span class="stock-label">Stock actual:</span>
+          <span class="stock-numero" id="ajuste-stock-actual">0</span>
+          <span class="stock-unidad" id="ajuste-unidad-label">piezas</span>
+        </div>
+
+        <div class="ajuste-controls">
+          <button class="btn-resta" onclick="cambiarCantidadAjuste(-1)">−</button>
+          <input type="number" class="input-ajuste" id="campo-ajuste-cantidad"
+                 value="1" min="1" max="9999" />
+          <button class="btn-suma" onclick="cambiarCantidadAjuste(1)">＋</button>
+        </div>
+
+        <div class="ajuste-tipo">
+          <button class="btn-tipo active" id="btn-entrada" onclick="seleccionarTipoAjuste('entrada')">
+            ↑ Entrada (compra)
+          </button>
+          <button class="btn-tipo btn-tipo-salida" id="btn-salida" onclick="seleccionarTipoAjuste('salida')">
+            ↓ Salida (venta)
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="campo-ajuste-motivo">Motivo (opcional)</label>
+          <input type="text" class="form-input" id="campo-ajuste-motivo"
+                 placeholder="Ej: Compra a proveedor, venta al cliente..." />
+        </div>
+
+        <p class="ajuste-preview" id="ajuste-preview-texto">
+          El stock quedará en <strong id="ajuste-resultado">0</strong> unidades.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="cerrarModalAjuste()">Cancelar</button>
+        <button class="btn-primary" onclick="confirmarAjuste()">Confirmar Ajuste</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       MODAL: CONFIRMAR ELIMINACIÓN
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-eliminar" onclick="cerrarModalSiOverlay(event)">
+    <div class="modal-box modal-box-sm">
+      <div class="modal-header modal-header-danger">
+        <h2 class="modal-title">Eliminar Producto</h2>
+        <button class="btn-cerrar-modal" onclick="cerrarModalEliminar()">✕</button>
+      </div>
+      <div class="modal-body modal-body-center">
+        <div class="eliminar-icono">🗑️</div>
+        <p class="eliminar-mensaje">
+          ¿Estás seguro de que deseas eliminar <strong id="eliminar-nombre-producto"></strong>?
+        </p>
+        <p class="eliminar-sub">Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="cerrarModalEliminar()">Cancelar</button>
+        <button class="btn-danger" onclick="confirmarEliminacion()">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- TOAST DE NOTIFICACIONES -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
